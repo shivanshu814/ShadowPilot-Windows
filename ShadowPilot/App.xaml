@@ -1,0 +1,20 @@
+<Application x:Class="ShadowPilot.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             ShutdownMode="OnExplicitShutdown">
+    <Application.Resources>
+        <!-- Color tokens matching macOS version -->
+        <SolidColorBrush x:Key="SpAmber"    Color="#FEFCC247"/>
+        <SolidColorBrush x:Key="SpAmberDim" Color="#30FCC247"/>
+        <SolidColorBrush x:Key="SpRed"      Color="#FAFB5252"/>
+        <SolidColorBrush x:Key="SpBlue"     Color="#FF73C7FF"/>
+        <SolidColorBrush x:Key="SpBlueDim"  Color="#2573C7FF"/>
+        <SolidColorBrush x:Key="SpGreen"    Color="#FF59E68C"/>
+        <SolidColorBrush x:Key="SpGreenDim" Color="#2559E68C"/>
+        <SolidColorBrush x:Key="SpText"     Color="#D9FFFFFF"/>
+        <SolidColorBrush x:Key="SpSubtext"  Color="#60FFFFFF"/>
+        <SolidColorBrush x:Key="SpSurface"  Color="#18FFFFFF"/>
+        <SolidColorBrush x:Key="SpBorder"   Color="#20FFFFFF"/>
+        <SolidColorBrush x:Key="SpBg"       Color="#E0141414"/>
+    </Application.Resources>
+</Application>

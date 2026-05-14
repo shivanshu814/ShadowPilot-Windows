@@ -1,0 +1,115 @@
+<Window x:Class="ShadowPilot.SetupWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ShadowPilot — Session Setup"
+        Width="480" SizeToContent="Height"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Background="#FF0F0F0F"
+        Foreground="White"
+        FontFamily="Segoe UI">
+    <Window.Resources>
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="FontSize"   Value="10"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{StaticResource SpSubtext}"/>
+        </Style>
+        <Style x:Key="TextArea" TargetType="TextBox">
+            <Setter Property="Background"      Value="#18FFFFFF"/>
+            <Setter Property="Foreground"      Value="{StaticResource SpText}"/>
+            <Setter Property="BorderBrush"     Value="{StaticResource SpBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding"         Value="10,8"/>
+            <Setter Property="FontSize"        Value="13"/>
+            <Setter Property="AcceptsReturn"   Value="True"/>
+            <Setter Property="TextWrapping"    Value="Wrap"/>
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="28">
+
+            <!-- Header -->
+            <StackPanel Margin="0,0,0,24">
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                    <Border Width="4" Height="20" CornerRadius="2"
+                            Background="{StaticResource SpAmber}" Margin="0,0,8,0"/>
+                    <TextBlock Text="SHADOWPILOT" FontSize="10" FontWeight="Black"
+                               Foreground="{StaticResource SpAmber}" VerticalAlignment="Center"/>
+                </StackPanel>
+                <TextBlock Text="Session Setup" FontSize="24" FontWeight="Bold" Foreground="White"/>
+                <TextBlock Text="Paste context so every answer is tailored to this role."
+                           FontSize="13" Foreground="{StaticResource SpSubtext}" Margin="0,4,0,0"/>
+            </StackPanel>
+
+            <!-- API key status -->
+            <Border x:Name="KeyStatusBorder" CornerRadius="8" Margin="0,0,0,22" Padding="12,9">
+                <StackPanel Orientation="Horizontal">
+                    <Ellipse x:Name="KeyDot" Width="7" Height="7" Margin="0,0,8,0"
+                             VerticalAlignment="Center"/>
+                    <TextBlock x:Name="KeyStatusText" FontSize="12"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
+            <!-- JD field -->
+            <TextBlock Style="{StaticResource FieldLabel}" Text="JOB DESCRIPTION" Margin="0,0,0,7"/>
+            <TextBox Style="{StaticResource TextArea}" x:Name="JdBox"
+                     Height="120" Margin="0,0,0,14"
+                     Text="{Binding JD, UpdateSourceTrigger=PropertyChanged}"/>
+
+            <!-- Resume field -->
+            <TextBlock Style="{StaticResource FieldLabel}" Text="YOUR RESUME" Margin="0,0,0,7"/>
+            <TextBox Style="{StaticResource TextArea}" x:Name="ResumeBox"
+                     Height="120" Margin="0,0,0,26"
+                     Text="{Binding Resume, UpdateSourceTrigger=PropertyChanged}"/>
+
+            <!-- Begin button -->
+            <Button x:Name="BeginBtn" Height="46" Click="BeginBtn_Click"
+                    Cursor="Hand">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" CornerRadius="10"
+                                Background="{StaticResource SpAmber}">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
+                                        VerticalAlignment="Center">
+                                <TextBlock Text="Begin Session" FontSize="14" FontWeight="SemiBold"
+                                           Foreground="#D9000000" Margin="0,0,8,0"/>
+                                <TextBlock Text="→" FontSize="14" FontWeight="Bold"
+                                           Foreground="#D9000000"/>
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.88"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Background"
+                                        Value="{StaticResource SpSurface}"/>
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+
+            <TextBlock x:Name="NoKeyHint" Visibility="Collapsed"
+                       Text="Add OPENAI_API_KEY or OPENROUTER_API_KEY to %USERPROFILE%\.shadowpilot.env and relaunch."
+                       FontSize="11" Foreground="{StaticResource SpSubtext}"
+                       TextWrapping="Wrap" Margin="0,8,0,0"/>
+        </StackPanel>
+    </ScrollViewer>
+</Window>

@@ -1,0 +1,294 @@
+<Window x:Class="ShadowPilot.OverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:ShadowPilot"
+        xmlns:controls="clr-namespace:ShadowPilot.Controls"
+        Title="ShadowPilot"
+        Width="700"
+        SizeToContent="Height"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        Topmost="True"
+        ResizeMode="NoResize">
+    <Window.Resources>
+        <!-- Glass button style -->
+        <Style x:Key="GlassBtn" TargetType="Button">
+            <Setter Property="Width"  Value="26"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Background" Value="{StaticResource SpSurface}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" CornerRadius="13"
+                                Background="{TemplateBinding Background}"
+                                BorderThickness="0.5" BorderBrush="#30FFFFFF">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.75"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Mode pill toggle style -->
+        <Style x:Key="PillToggle" TargetType="ToggleButton">
+            <Setter Property="Height"  Value="22"/>
+            <Setter Property="Cursor"  Value="Hand"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Bd" CornerRadius="11" Padding="8,4"
+                                Background="#0FFFFFFF">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="Background"
+                                        Value="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.85"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <!-- Outer container: rounded glass card -->
+    <Border x:Name="RootBorder"
+            CornerRadius="18"
+            Background="#E0141414"
+            BorderBrush="#20FFFFFF"
+            BorderThickness="1"
+            MouseLeftButtonDown="RootBorder_MouseDown">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="30" Direction="270" ShadowDepth="10"
+                              Opacity="0.4" Color="Black"/>
+        </Border.Effect>
+
+        <StackPanel>
+            <!-- ── Top bar ── -->
+            <StackPanel Margin="18,13,18,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Waveform -->
+                    <local:WaveformControl x:Name="Waveform" Grid.Column="0"
+                                           Width="22" Height="18" VerticalAlignment="Center"/>
+
+                    <!-- Divider -->
+                    <Border Grid.Column="1" Width="1" Height="16" Margin="12,0"
+                            Background="#40FFFFFF" VerticalAlignment="Center"/>
+
+                    <!-- Status / type field -->
+                    <Grid Grid.Column="2" VerticalAlignment="Center">
+                        <!-- Status text (shown when not writing) -->
+                        <TextBlock x:Name="StatusTb"
+                                   FontSize="13" FontWeight="Medium"
+                                   Foreground="{StaticResource SpSubtext}"
+                                   TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center"/>
+
+                        <!-- Type-in field (shown when writing mode active) -->
+                        <TextBox x:Name="WriteField"
+                                 Visibility="Collapsed"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 Foreground="{StaticResource SpText}"
+                                 FontSize="13" FontWeight="Medium"
+                                 VerticalAlignment="Center"
+                                 KeyDown="WriteField_KeyDown"/>
+                    </Grid>
+
+                    <!-- Action buttons -->
+                    <StackPanel Grid.Column="3" Orientation="Horizontal">
+
+                        <!-- Mic toggle (Ctrl+Shift+L) -->
+                        <Button x:Name="MicBtn" Style="{StaticResource GlassBtn}"
+                                Margin="0,0,6,0"
+                                Click="MicBtn_Click" ToolTip="Mic toggle (Ctrl+Shift+L)">
+                            <TextBlock x:Name="MicIcon" Text="🎙" FontSize="11"
+                                       VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </Button>
+
+                        <!-- Get answer (Ctrl+Shift+A) -->
+                        <Button x:Name="AnswerBtn" Style="{StaticResource GlassBtn}"
+                                Margin="0,0,6,0"
+                                Background="{StaticResource SpAmberDim}"
+                                Click="AnswerBtn_Click" ToolTip="Get answer (Ctrl+Shift+A)">
+                            <TextBlock Text="⚡" FontSize="11"
+                                       VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </Button>
+
+                        <!-- Screenshot (Ctrl+Shift+D) -->
+                        <Button x:Name="ScreenBtn" Style="{StaticResource GlassBtn}"
+                                Margin="0,0,6,0"
+                                Background="{StaticResource SpBlueDim}"
+                                Click="ScreenBtn_Click" ToolTip="Capture screen (Ctrl+Shift+D)">
+                            <TextBlock x:Name="ScreenIcon" Text="📷" FontSize="11"
+                                       VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </Button>
+
+                        <!-- Write mode -->
+                        <Button x:Name="WriteBtn" Style="{StaticResource GlassBtn}"
+                                Margin="0,0,6,0"
+                                Click="WriteBtn_Click" ToolTip="Type question (Ctrl+W)">
+                            <TextBlock Text="✏" FontSize="11"
+                                       VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </Button>
+
+                        <!-- Clear (Ctrl+Shift+X / Esc) -->
+                        <Button Style="{StaticResource GlassBtn}"
+                                Background="#12FFFFFF"
+                                Click="ClearBtn_Click" ToolTip="Clear (Ctrl+Shift+X)">
+                            <TextBlock Text="✕" FontSize="10" FontWeight="Bold"
+                                       Foreground="{StaticResource SpSubtext}"
+                                       VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+
+            <!-- ── Mode pills row ── -->
+            <StackPanel Orientation="Horizontal" Margin="18,8,18,10" x:Name="PillsRow">
+
+                <!-- Follow-up -->
+                <ToggleButton x:Name="FollowUpPill" Style="{StaticResource PillToggle}"
+                              Tag="#2559E68C" Checked="FollowUpPill_Changed" Unchecked="FollowUpPill_Changed"
+                              ToolTip="Remember conversation — context-aware answers">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="↺" FontSize="9" FontWeight="Bold" Margin="0,0,4,0"
+                                   Foreground="{StaticResource SpSubtext}" x:Name="FollowUpIcon"/>
+                        <TextBlock Text="Follow-up" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{StaticResource SpSubtext}" x:Name="FollowUpLabel"/>
+                    </StackPanel>
+                </ToggleButton>
+
+                <ToggleButton x:Name="WhisperPill" Style="{StaticResource PillToggle}"
+                              Margin="4,0,0,0" Tag="{StaticResource SpBlueDim}"
+                              Checked="WhisperPill_Changed" Unchecked="WhisperPill_Changed"
+                              ToolTip="Answer reveals line by line">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="👁" FontSize="9" Margin="0,0,4,0"
+                                   Foreground="{StaticResource SpSubtext}" x:Name="WhisperIcon"/>
+                        <TextBlock Text="Whisper" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{StaticResource SpSubtext}" x:Name="WhisperLabel"/>
+                    </StackPanel>
+                </ToggleButton>
+
+                <ToggleButton x:Name="AutoPill" Style="{StaticResource PillToggle}"
+                              Margin="4,0,0,0" Tag="{StaticResource SpAmberDim}"
+                              Checked="AutoPill_Changed" Unchecked="AutoPill_Changed"
+                              ToolTip="Auto-fires when you stop speaking">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="〜" FontSize="9" Margin="0,0,4,0"
+                                   Foreground="{StaticResource SpSubtext}" x:Name="AutoIcon"/>
+                        <TextBlock Text="Auto" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{StaticResource SpSubtext}" x:Name="AutoLabel"/>
+                    </StackPanel>
+                </ToggleButton>
+
+                <Button x:Name="ClearHistoryBtn" Visibility="Collapsed"
+                        Margin="8,0,0,0" Cursor="Hand"
+                        Background="Transparent" BorderThickness="0"
+                        Click="ClearHistoryBtn_Click">
+                    <TextBlock x:Name="ClearHistoryTb" FontSize="9"
+                               Foreground="{StaticResource SpSubtext}"/>
+                </Button>
+            </StackPanel>
+
+            <!-- ── Filler banner ── -->
+            <Border x:Name="FillerBanner" Visibility="Collapsed">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="BorderBrush" Value="#30FFFFFF"/>
+                        <Setter Property="BorderThickness" Value="0,1,0,0"/>
+                    </Style>
+                </Border.Style>
+                <StackPanel Orientation="Horizontal" Margin="18,10">
+                    <Ellipse x:Name="FillerDot" Width="5" Height="5" Margin="0,0,8,0"
+                             Fill="{StaticResource SpAmber}" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="FillerTb"
+                               FontSize="12" FontWeight="Medium"
+                               Foreground="{StaticResource SpAmber}"
+                               FontStyle="Italic" MaxWidth="460"
+                               TextTrimming="CharacterEllipsis" Margin="0,0,8,0"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text="AI thinking..." FontSize="10"
+                               Foreground="{StaticResource SpSubtext}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
+            <!-- ── Answer panel ── -->
+            <Border x:Name="AnswerPanel" Visibility="Collapsed"
+                    BorderBrush="#30FFFFFF" BorderThickness="0,1,0,0">
+                <Grid>
+                    <!-- Amber accent left bar -->
+                    <Border Width="3" HorizontalAlignment="Left" Margin="6,10,0,10"
+                            CornerRadius="2" Background="{StaticResource SpAmber}"
+                            Height="24" VerticalAlignment="Top" x:Name="AccentBar"/>
+
+                    <StackPanel>
+                        <!-- Question strip -->
+                        <Grid x:Name="TranscriptStrip" Margin="18,10,18,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Width="17" Height="17" CornerRadius="4"
+                                    Background="{StaticResource SpAmberDim}" Margin="0,0,10,0">
+                                <TextBlock Text="Q" FontSize="9" FontWeight="Black"
+                                           Foreground="{StaticResource SpAmber}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" x:Name="TranscriptTb"
+                                       FontSize="12" Foreground="{StaticResource SpSubtext}"
+                                       TextTrimming="CharacterEllipsis" MaxHeight="36"
+                                       TextWrapping="Wrap" VerticalAlignment="Center" ClipToBounds="True"/>
+                        </Grid>
+
+                        <Border BorderBrush="#25FFFFFF" BorderThickness="0,1,0,0" Margin="0,10,0,0"
+                                x:Name="TranscriptDivider"/>
+
+                        <!-- Loading dots -->
+                        <local:LoadingDotsControl x:Name="LoadingDots"
+                                                  Margin="18,18" Visibility="Collapsed"/>
+
+                        <!-- Answer markdown -->
+                        <ScrollViewer x:Name="AnswerScroll"
+                                      MaxHeight="900" MinHeight="40"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      Margin="0,14,0,14">
+                            <controls:MarkdownViewer x:Name="AnswerMd"
+                                                     Markdown=""
+                                                     Margin="18,0"
+                                                     Background="Transparent"
+                                                     Foreground="{StaticResource SpText}"/>
+                        </ScrollViewer>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </StackPanel>
+    </Border>
+</Window>

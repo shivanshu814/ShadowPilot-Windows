@@ -1,0 +1,68 @@
+name: Build Windows Installer
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore ShadowPilot/ShadowPilot.csproj
+
+      - name: Publish self-contained exe
+        run: |
+          dotnet publish ShadowPilot/ShadowPilot.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:PublishTrimmed=false `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -o publish/
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Create Inno Setup installer
+        run: iscc installer.iss
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ShadowPilot-Setup
+          path: dist/ShadowPilot-Setup.exe
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: ShadowPilot v1.0.${{ github.run_number }}
+          files: dist/ShadowPilot-Setup.exe
+          generate_release_notes: false
+          body: |
+            ## ShadowPilot for Windows
+
+            **Install:** Download `ShadowPilot-Setup.exe` and run it.
+
+            **First run:** Enter your OpenAI API key when prompted (or add it to `%USERPROFILE%\.shadowpilot.env`).
+
+            **Hotkeys (system-wide):**
+            - `Ctrl+Shift+L` — Mic toggle
+            - `Ctrl+Shift+A` — Get AI answer
+            - `Ctrl+Shift+D` — Screenshot + analyze
+            - `Ctrl+Shift+X` — Clear
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

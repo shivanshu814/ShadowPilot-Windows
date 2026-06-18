@@ -1,4 +1,4 @@
-<![CDATA[<p align="center">
+<p align="center">
   <img src="https://img.shields.io/badge/.NET-8.0-purple?style=for-the-badge&logo=dotnet" />
   <img src="https://img.shields.io/badge/Platform-Windows%2010%2B-blue?style=for-the-badge&logo=windows" />
   <img src="https://img.shields.io/badge/UI-WPF-green?style=for-the-badge" />
@@ -48,7 +48,7 @@ ShadowPilot is a **stealth desktop overlay** that sits on top of your screen dur
 
 ### Option 1 — One-Click Install (Recommended)
 
-Download the latest `ShadowPilot-Setup.exe` from [**GitHub Releases**](../../releases/latest) and run it. The installer will:
+Download the latest `ShadowPilot-Setup.exe` from [**GitHub Releases**](https://github.com/shivanshu814/ShadowPilot-Windows/releases/latest) and run it. The installer will:
 - Set up ShadowPilot in your `AppData` folder
 - Create Desktop & Start Menu shortcuts
 - Prompt you for an API key on first run
@@ -60,7 +60,7 @@ Download the latest `ShadowPilot-Setup.exe` from [**GitHub Releases**](../../rel
 #### 1. Clone the repository
 
 ```powershell
-git clone https://github.com/YOUR_USERNAME/ShadowPilot-Windows.git
+git clone https://github.com/shivanshu814/ShadowPilot-Windows.git
 cd ShadowPilot-Windows
 ```
 
@@ -85,12 +85,7 @@ dotnet run --project ShadowPilot/ShadowPilot.csproj
 #### Or publish a self-contained `.exe`:
 
 ```powershell
-dotnet publish ShadowPilot/ShadowPilot.csproj `
-    -c Release `
-    -r win-x64 `
-    --self-contained true `
-    -p:PublishSingleFile=true `
-    -o ./build
+dotnet publish ShadowPilot/ShadowPilot.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ./build
 ```
 
 The compiled `ShadowPilot.exe` will be in the `./build` folder.
@@ -254,4 +249,3 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) for detai
 <p align="center">
   <b>Built with ❤️ for engineers who prepare smarter.</b>
 </p>
-]]>

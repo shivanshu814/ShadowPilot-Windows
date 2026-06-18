@@ -24,7 +24,7 @@ public sealed class AppViewModel : INotifyPropertyChanged
     private bool   _showAnswer;
     private bool   _isLoadingAnswer;
     private bool   _isCapturing;
-    private bool   _isWriting;
+    private bool   _isWriting  = true;
     private bool   _showFiller;
     private bool   _followUpMode;
     private bool   _whisperMode;
@@ -59,14 +59,17 @@ public sealed class AppViewModel : INotifyPropertyChanged
     public string Resume { get; set; } = "";
 
     // ── Services ─────────────────────────────────────────────────────────────
-    private readonly SystemAudioCapture   _audioCapture   = new();
-    private readonly SpeechRecognizerService _speechRec   = new();
-    private readonly SilenceDetector      _silenceDetector = new(1.8);
+    private readonly SystemAudioCapture      _audioCapture    = new();
+    private readonly SpeechRecognizerService _speechRec       = new();
+    private readonly SilenceDetector         _silenceDetector = new(1.8);
 
-    private GPTService? PrimaryService   => string.IsNullOrEmpty(EnvConfig.OpenAIKey)     ? null
-        : new GPTService(EnvConfig.OpenAIKey);
-    private GPTService? FallbackService  => string.IsNullOrEmpty(EnvConfig.OpenRouterKey) ? null
+    // Priority: Bedrock → OpenRouter → OpenAI
+    private BedrockService? BedrockSvc    => string.IsNullOrEmpty(EnvConfig.BedrockKey)    ? null
+        : new BedrockService(EnvConfig.BedrockKey, EnvConfig.BedrockRegion);
+    private GPTService?     OpenRouterSvc => string.IsNullOrEmpty(EnvConfig.OpenRouterKey) ? null
         : new GPTService(EnvConfig.OpenRouterKey, "https://openrouter.ai/api/v1", "openai/gpt-4o");
+    private GPTService?     OpenAISvc     => string.IsNullOrEmpty(EnvConfig.OpenAIKey)     ? null
+        : new GPTService(EnvConfig.OpenAIKey);
 
     private CancellationTokenSource? _whisperCts;
 
@@ -128,7 +131,7 @@ public sealed class AppViewModel : INotifyPropertyChanged
     // ── Get Answer ────────────────────────────────────────────────────────────
     public async Task GetAnswerAsync()
     {
-        if (PrimaryService == null && FallbackService == null) { StatusText = "Add API key in .env"; return; }
+        if (BedrockSvc == null && OpenRouterSvc == null && OpenAISvc == null) { StatusText = "Add API key in .env"; return; }
         if (string.IsNullOrEmpty(Transcript))                  { StatusText = "Nothing heard yet";  return; }
 
         IsLoadingAnswer = true;
@@ -168,8 +171,7 @@ public sealed class AppViewModel : INotifyPropertyChanged
     // ── Screenshot ────────────────────────────────────────────────────────────
     public async Task CaptureAndAnalyzeAsync()
     {
-        var service = PrimaryService ?? FallbackService;
-        if (service == null) { StatusText = "Add API key in .env"; return; }
+        if (BedrockSvc == null && OpenRouterSvc == null && OpenAISvc == null) { StatusText = "Add API key in .env"; return; }
 
         IsCapturing     = true;
         IsLoadingAnswer = true;
@@ -187,8 +189,25 @@ public sealed class AppViewModel : INotifyPropertyChanged
             var full = "";
             var hist = FollowUpMode ? (IEnumerable<ConversationTurn>)History : [];
 
-            await foreach (var chunk in service.StreamVision(imageBytes, JD, Resume, hist))
-                full += chunk;
+            // 1. Try Bedrock
+            if (BedrockSvc is { } bedrock)
+            {
+                try
+                {
+                    await foreach (var chunk in bedrock.StreamVision(imageBytes, JD, Resume, hist))
+                        full += chunk;
+                }
+                catch
+                {
+                    full = "";
+                    StatusText = "Bedrock failed, trying fallback...";
+                    full = await VisionFallbackAsync(imageBytes, hist);
+                }
+            }
+            else
+            {
+                full = await VisionFallbackAsync(imageBytes, hist);
+            }
 
             ShowFiller = false;
             FillerText = "";
@@ -254,32 +273,79 @@ public sealed class AppViewModel : INotifyPropertyChanged
     private async Task<string> CollectFullAsync()
     {
         var hist = FollowUpMode ? (IEnumerable<ConversationTurn>)History : [];
-        var full = "";
+        Exception? lastEx = null;
 
-        if (PrimaryService is { } primary)
+        // 1. Bedrock (Meta Llama 3.3 70B — fastest + most capable)
+        if (BedrockSvc is { } bedrock)
         {
             try
             {
-                await foreach (var chunk in primary.Stream(Transcript, JD, Resume, hist))
+                var full = "";
+                await foreach (var chunk in bedrock.Stream(Transcript, JD, Resume, hist))
                     full += chunk;
                 return full;
             }
-            catch
+            catch (Exception ex)
             {
-                if (FallbackService == null) throw;
-                full = "";
-                StatusText = "Retrying...";
+                lastEx = ex;
+                StatusText = "Bedrock failed, trying OpenRouter...";
             }
         }
 
-        if (FallbackService is { } fallback)
+        // 2. OpenRouter
+        if (OpenRouterSvc is { } openRouter)
         {
-            await foreach (var chunk in fallback.Stream(Transcript, JD, Resume, hist))
+            try
+            {
+                var full = "";
+                await foreach (var chunk in openRouter.Stream(Transcript, JD, Resume, hist))
+                    full += chunk;
+                return full;
+            }
+            catch (Exception ex)
+            {
+                lastEx = ex;
+                StatusText = "OpenRouter failed, trying OpenAI...";
+            }
+        }
+
+        // 3. OpenAI
+        if (OpenAISvc is { } openAI)
+        {
+            var full = "";
+            await foreach (var chunk in openAI.Stream(Transcript, JD, Resume, hist))
                 full += chunk;
             return full;
         }
 
-        throw new InvalidOperationException("No API service available");
+        throw lastEx ?? new InvalidOperationException("No API service available");
+    }
+
+    private async Task<string> VisionFallbackAsync(byte[] imageBytes, IEnumerable<ConversationTurn> hist)
+    {
+        Exception? lastEx = null;
+
+        if (OpenRouterSvc is { } openRouter)
+        {
+            try
+            {
+                var full = "";
+                await foreach (var chunk in openRouter.StreamVision(imageBytes, JD, Resume, hist))
+                    full += chunk;
+                return full;
+            }
+            catch (Exception ex) { lastEx = ex; }
+        }
+
+        if (OpenAISvc is { } openAI)
+        {
+            var full = "";
+            await foreach (var chunk in openAI.StreamVision(imageBytes, JD, Resume, hist))
+                full += chunk;
+            return full;
+        }
+
+        throw lastEx ?? new InvalidOperationException("No API service available");
     }
 
     private async Task RevealWhisperAsync(string full)

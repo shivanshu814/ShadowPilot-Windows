@@ -14,8 +14,9 @@ public partial class SetupWindow : Window
         DataContext = vm;
         _onDone = onDone;
 
-        var hasKeys = !string.IsNullOrEmpty(EnvConfig.OpenAIKey) ||
-                      !string.IsNullOrEmpty(EnvConfig.OpenRouterKey);
+        var hasKeys = !string.IsNullOrEmpty(EnvConfig.BedrockKey)    ||
+                      !string.IsNullOrEmpty(EnvConfig.OpenRouterKey) ||
+                      !string.IsNullOrEmpty(EnvConfig.OpenAIKey);
         ApplyKeyStatus(hasKeys);
     }
 

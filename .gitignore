@@ -1,3 +1,25 @@
 
 # BlamePrompt staging (auto-generated)
 .blameprompt/
+
+# ── Secrets ──
+.env
+ShadowPilot/.env
+
+# ── Build outputs ──
+bin/
+obj/
+publish/
+build/
+dist/
+
+# ── IDE / OS ──
+.vs/
+*.user
+*.suo
+*.DotSettings.user
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db

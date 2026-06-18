@@ -2,8 +2,10 @@ namespace ShadowPilot.Services;
 
 public static class EnvConfig
 {
-    public static string OpenAIKey     => Load("OPENAI_API_KEY");
+    public static string BedrockKey    => Load("BEDROCK_API_KEY");
+    public static string BedrockRegion => Load("BEDROCK_REGION") is { Length: > 0 } r ? r : "us-east-1";
     public static string OpenRouterKey => Load("OPENROUTER_API_KEY");
+    public static string OpenAIKey     => Load("OPENAI_API_KEY");
 
     private static string Load(string key)
     {

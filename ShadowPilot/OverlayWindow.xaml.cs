@@ -39,10 +39,19 @@ public partial class OverlayWindow : Window
 
             // Register global hotkeys
             HotkeyManager.Shared.Register(this);
-            HotkeyManager.Shared.OnMicToggle  = () => ViewModel.IsListening ? ViewModel.StopListening() : ViewModel.StartListening();
-            HotkeyManager.Shared.OnGetAnswer  = () => _ = ViewModel.GetAnswerAsync();
-            HotkeyManager.Shared.OnScreenshot = () => _ = ViewModel.CaptureAndAnalyzeAsync();
-            HotkeyManager.Shared.OnClear      = () => ViewModel.Clear();
+            HotkeyManager.Shared.OnMicToggle     = () => { if (ViewModel.IsListening) ViewModel.StopListening(); else ViewModel.StartListening(); };
+            HotkeyManager.Shared.OnGetAnswer     = () => _ = ViewModel.GetAnswerAsync();
+            HotkeyManager.Shared.OnScreenshot    = () => _ = ViewModel.CaptureAndAnalyzeAsync();
+            HotkeyManager.Shared.OnClear         = () => ViewModel.Clear();
+            HotkeyManager.Shared.OnWritingToggle = () => ToggleWriting();
+
+            // Apply initial IsWriting state (defaults to true, matching macOS)
+            if (ViewModel.IsWriting)
+            {
+                WriteField.Text = ViewModel.Transcript;
+                WriteField.Visibility = Visibility.Visible;
+                StatusTb.Visibility   = Visibility.Collapsed;
+            }
 
             // Center horizontally at top of primary screen
             var screen = SystemParameters.WorkArea;
@@ -70,7 +79,10 @@ public partial class OverlayWindow : Window
 
     private void ScreenBtn_Click(object s, RoutedEventArgs e) => _ = ViewModel.CaptureAndAnalyzeAsync();
 
-    private void WriteBtn_Click(object s, RoutedEventArgs e)
+    private void WriteBtn_Click(object s, RoutedEventArgs e) => ToggleWriting();
+
+    // Shared toggle used by both the button and Ctrl+Shift+W hotkey
+    private void ToggleWriting()
     {
         ViewModel.IsWriting = !ViewModel.IsWriting;
         if (ViewModel.IsWriting)
@@ -78,6 +90,8 @@ public partial class OverlayWindow : Window
             WriteField.Text = ViewModel.Transcript;
             WriteField.Visibility = Visibility.Visible;
             StatusTb.Visibility   = Visibility.Collapsed;
+            // Bring the window to foreground so the text field can receive input
+            Activate();
             WriteField.Focus();
             WriteField.CaretIndex = WriteField.Text.Length;
         }
@@ -109,8 +123,13 @@ public partial class OverlayWindow : Window
     private void ClearBtn_Click(object s, RoutedEventArgs e)
     {
         ViewModel.Clear();
-        WriteField.Visibility = Visibility.Collapsed;
-        StatusTb.Visibility   = Visibility.Visible;
+        // Ensure writing mode UI is also reset
+        if (ViewModel.IsWriting)
+        {
+            ViewModel.IsWriting   = false;
+            WriteField.Visibility = Visibility.Collapsed;
+            StatusTb.Visibility   = Visibility.Visible;
+        }
     }
 
     private void ClearHistoryBtn_Click(object s, RoutedEventArgs e) => ViewModel.ClearHistory();
@@ -208,11 +227,28 @@ public partial class OverlayWindow : Window
                     AnswerMd.Markdown = ViewModel.Answer;
                     break;
 
+                case nameof(AppViewModel.IsWriting):
+                    if (ViewModel.IsWriting)
+                    {
+                        WriteField.Text = ViewModel.Transcript;
+                        WriteField.Visibility = Visibility.Visible;
+                        StatusTb.Visibility   = Visibility.Collapsed;
+                    }
+                    else
+                    {
+                        WriteField.Visibility = Visibility.Collapsed;
+                        StatusTb.Visibility   = Visibility.Visible;
+                    }
+                    break;
+
                 case nameof(AppViewModel.Transcript):
                     TranscriptTb.Text = ViewModel.Transcript;
                     TranscriptStrip.Visibility = string.IsNullOrEmpty(ViewModel.Transcript)
                         ? Visibility.Collapsed : Visibility.Visible;
                     TranscriptDivider.Visibility = TranscriptStrip.Visibility;
+                    // Keep write field in sync when transcript changes externally (e.g., speech recognition)
+                    if (ViewModel.IsWriting)
+                        WriteField.Text = ViewModel.Transcript;
                     break;
             }
         });

@@ -9,10 +9,11 @@ public sealed class HotkeyManager : IDisposable
 {
     public static readonly HotkeyManager Shared = new();
 
-    public Action? OnMicToggle;    // Ctrl+Shift+L
-    public Action? OnGetAnswer;    // Ctrl+Shift+A
-    public Action? OnScreenshot;   // Ctrl+Shift+D
-    public Action? OnClear;        // Ctrl+Shift+X
+    public Action? OnMicToggle;       // Ctrl+Shift+L
+    public Action? OnGetAnswer;       // Ctrl+Shift+A
+    public Action? OnScreenshot;      // Ctrl+Shift+D
+    public Action? OnClear;           // Ctrl+Shift+X
+    public Action? OnWritingToggle;   // Ctrl+Shift+W
 
     private HwndSource? _hwndSource;
     private const int WM_HOTKEY = 0x0312;
@@ -41,12 +42,13 @@ public sealed class HotkeyManager : IDisposable
         RegisterHotKey(handle, 2, mods, (uint)System.Windows.Forms.Keys.A);
         RegisterHotKey(handle, 3, mods, (uint)System.Windows.Forms.Keys.D);
         RegisterHotKey(handle, 4, mods, (uint)System.Windows.Forms.Keys.X);
+        RegisterHotKey(handle, 5, mods, (uint)System.Windows.Forms.Keys.W);
     }
 
     public void Unregister(Window window)
     {
         var handle = new WindowInteropHelper(window).Handle;
-        for (int i = 1; i <= 4; i++) UnregisterHotKey(handle, i);
+        for (int i = 1; i <= 5; i++) UnregisterHotKey(handle, i);
         _hwndSource?.RemoveHook(WndProc);
     }
 
@@ -56,10 +58,11 @@ public sealed class HotkeyManager : IDisposable
         {
             switch (wParam.ToInt32())
             {
-                case 1: Application.Current.Dispatcher.Invoke(() => OnMicToggle?.Invoke()); break;
-                case 2: Application.Current.Dispatcher.Invoke(() => OnGetAnswer?.Invoke()); break;
-                case 3: Application.Current.Dispatcher.Invoke(() => OnScreenshot?.Invoke()); break;
-                case 4: Application.Current.Dispatcher.Invoke(() => OnClear?.Invoke()); break;
+                case 1: Application.Current.Dispatcher.Invoke(() => OnMicToggle?.Invoke());     break;
+                case 2: Application.Current.Dispatcher.Invoke(() => OnGetAnswer?.Invoke());     break;
+                case 3: Application.Current.Dispatcher.Invoke(() => OnScreenshot?.Invoke());    break;
+                case 4: Application.Current.Dispatcher.Invoke(() => OnClear?.Invoke());         break;
+                case 5: Application.Current.Dispatcher.Invoke(() => OnWritingToggle?.Invoke()); break;
             }
             handled = true;
         }

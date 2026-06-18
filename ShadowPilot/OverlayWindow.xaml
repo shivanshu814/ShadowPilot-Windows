@@ -152,7 +152,7 @@
                         <!-- Write mode -->
                         <Button x:Name="WriteBtn" Style="{StaticResource GlassBtn}"
                                 Margin="0,0,6,0"
-                                Click="WriteBtn_Click" ToolTip="Type question (Ctrl+W)">
+                                Click="WriteBtn_Click" ToolTip="Toggle writing mode (Ctrl+Shift+W)">
                             <TextBlock Text="✏" FontSize="11"
                                        VerticalAlignment="Center" HorizontalAlignment="Center"/>
                         </Button>

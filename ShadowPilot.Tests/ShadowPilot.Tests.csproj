@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" PrivateAssets="all" />
+    <PackageReference Include="NAudio.Core" Version="2.2.1" />
+    <PackageReference Include="System.Speech" Version="8.0.0" />
+  </ItemGroup>
+  <!-- Exercise the production pipeline without WPF, a microphone, or an installed SAPI voice. -->
+  <ItemGroup>
+    <Compile Include="../ShadowPilot/Services/PcmAudioStream.cs" Link="Services/PcmAudioStream.cs" />
+    <Compile Include="../ShadowPilot/Services/IRecognitionEngine.cs" Link="Services/IRecognitionEngine.cs" />
+    <Compile Include="../ShadowPilot/Services/WindowsRecognitionEngine.cs" Link="Services/WindowsRecognitionEngine.cs" />
+    <Compile Include="../ShadowPilot/Services/SpeechRecognizerService.cs" Link="Services/SpeechRecognizerService.cs" />
+    <Compile Include="../ShadowPilot/Services/LoopbackSampleConverter.cs" Link="Services/LoopbackSampleConverter.cs" />
+    <Compile Include="../ShadowPilot/Services/SilenceDetector.cs" Link="Services/SilenceDetector.cs" />
+  </ItemGroup>
+</Project>

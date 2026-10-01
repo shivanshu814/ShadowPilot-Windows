@@ -39,10 +39,10 @@ public partial class OverlayWindow : Window
 
             // Register global hotkeys
             HotkeyManager.Shared.Register(this);
-            HotkeyManager.Shared.OnMicToggle     = () => { if (ViewModel.IsListening) ViewModel.StopListening(); else ViewModel.StartListening(); };
+            HotkeyManager.Shared.OnMicToggle     = async () => { if (ViewModel.IsListening) await ViewModel.StopListeningAsync(); else ViewModel.StartListening(); };
             HotkeyManager.Shared.OnGetAnswer     = () => _ = ViewModel.GetAnswerAsync();
             HotkeyManager.Shared.OnScreenshot    = () => _ = ViewModel.CaptureAndAnalyzeAsync();
-            HotkeyManager.Shared.OnClear         = () => ViewModel.Clear();
+            HotkeyManager.Shared.OnClear         = async () => await ViewModel.ClearAsync();
             HotkeyManager.Shared.OnWritingToggle = () => ToggleWriting();
 
             // Apply initial IsWriting state (defaults to true, matching macOS)
@@ -59,7 +59,11 @@ public partial class OverlayWindow : Window
             Top  = 30;
         };
 
-        Closing += (_, _) => HotkeyManager.Shared.Unregister(this);
+        Closing += (_, _) =>
+        {
+            HotkeyManager.Shared.Unregister(this);
+            ViewModel.Dispose();
+        };
     }
 
     // ── Drag to move ──────────────────────────────────────────────────────────
@@ -69,9 +73,9 @@ public partial class OverlayWindow : Window
     }
 
     // ── Button handlers ───────────────────────────────────────────────────────
-    private void MicBtn_Click(object s, RoutedEventArgs e)
+    private async void MicBtn_Click(object s, RoutedEventArgs e)
     {
-        if (ViewModel.IsListening) ViewModel.StopListening();
+        if (ViewModel.IsListening) await ViewModel.StopListeningAsync();
         else ViewModel.StartListening();
     }
 
@@ -120,9 +124,9 @@ public partial class OverlayWindow : Window
         }
     }
 
-    private void ClearBtn_Click(object s, RoutedEventArgs e)
+    private async void ClearBtn_Click(object s, RoutedEventArgs e)
     {
-        ViewModel.Clear();
+        await ViewModel.ClearAsync();
         // Ensure writing mode UI is also reset
         if (ViewModel.IsWriting)
         {

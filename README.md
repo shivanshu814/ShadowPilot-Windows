@@ -158,7 +158,7 @@ All hotkeys are **system-wide** — they work regardless of which app is focused
 
 | Shortcut | Action |
 |---|---|
-| `Ctrl + Shift + L` | 🎙️ Toggle microphone (start/stop listening) |
+| `Ctrl + Shift + L` | 🎙️ Toggle system audio (start/stop listening) |
 | `Ctrl + Shift + A` | 🤖 Get AI answer for current transcript |
 | `Ctrl + Shift + D` | 📷 Take screenshot and analyze |
 | `Ctrl + Shift + W` | ✏️ Toggle write mode (type questions manually) |
@@ -222,7 +222,7 @@ The overlay uses Win32 `WS_EX_NOACTIVATE` and `WS_EX_TOOLWINDOW` extended styles
 |---|---|
 | Framework | .NET 8 / WPF |
 | Audio Capture | NAudio (system loopback) |
-| Speech-to-Text | Windows.Media.SpeechRecognition |
+| Speech-to-Text | System.Speech with captured loopback PCM |
 | Markdown Rendering | Markdig |
 | AI Providers | OpenAI, OpenRouter, AWS Bedrock |
 | Installer | Inno Setup + PowerShell |
@@ -249,3 +249,39 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) for detai
 <p align="center">
   <b>Built with ❤️ for engineers who prepare smarter.</b>
 </p>
+
+## Audio pipeline validation
+
+Listening uses the default Windows **playback** endpoint. Its actual sample rate is
+passed to System.Speech; float/PCM capture is downmixed to mono and encoded as
+16-bit PCM. No microphone or virtual audio cable is required. Install the Windows
+English (United States) speech recognizer to use the current `en-US` dictation grammar.
+Startup/device errors appear in the status line; there is no microphone fallback.
+
+Run the hardware-independent regression tests with:
+
+```powershell
+dotnet test ShadowPilot.Tests/ShadowPilot.Tests.csproj -c Release
+dotnet build ShadowPilot/ShadowPilot.csproj -c Release
+```
+
+The tests exercise production conversion, buffering, routing and recognition
+lifecycle with an injected backend. They do not measure Windows recognition accuracy.
+The PR workflow also builds the WPF application on Windows.
+
+Windows smoke test (requires a playback endpoint and the en-US recognizer):
+
+1. Mute/disable the microphone and play a spoken question through the default output.
+   Start listening and verify live hypotheses and recognized text update.
+2. Stop during speech and verify the final words arrive before the final transcript
+   is used. Repeat start/stop and clear; text/audio must not leak between sessions.
+3. Enable AutoListen, play a question, then pause playback entirely. After about
+   1.8 seconds without speech, listening stops and requests one answer after final
+   recognition. An initially idle endpoint must not trigger an empty answer.
+4. Repeat at 44.1 kHz and 48 kHz output settings, and with a stereo headset.
+5. Close while listening and test an unavailable/removed endpoint: the app should
+   release capture/recognition and show failures without hanging or using a mic.
+
+A stalled recognizer has a bounded audio queue and a five-second finalization
+limit. Overflow or timeout is surfaced as an error rather than silently dropping
+speech or sending an automatically generated answer from incomplete audio.

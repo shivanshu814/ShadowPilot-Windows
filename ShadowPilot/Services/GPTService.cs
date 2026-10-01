@@ -118,17 +118,18 @@ Otherwise describe what you see and how to answer it.
             if (string.IsNullOrEmpty(line) || !line.StartsWith("data: ") || line == "data: [DONE]") continue;
 
             var json = line[6..];
+            string? text = null;
             try
             {
                 using var doc = JsonDocument.Parse(json);
-                var text = doc.RootElement
+                text = doc.RootElement
                     .GetProperty("choices")[0]
                     .GetProperty("delta")
                     .GetProperty("content")
                     .GetString();
-                if (!string.IsNullOrEmpty(text)) yield return text;
             }
             catch { /* skip malformed chunks */ }
+            if (!string.IsNullOrEmpty(text)) yield return text;
         }
     }
 

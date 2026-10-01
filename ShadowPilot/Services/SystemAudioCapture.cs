@@ -2,58 +2,61 @@ using NAudio.Wave;
 
 namespace ShadowPilot.Services;
 
-// Captures system audio (loopback) — hears what the interviewer is saying
+// Captures the default playback endpoint, never the default recording device.
 public sealed class SystemAudioCapture : IDisposable
 {
     public Action<float[]>? OnBuffer;
-
+    public Action<Exception>? OnError;
     private WasapiLoopbackCapture? _capture;
+    private LoopbackSampleConverter? _converter;
+
+    // Open first so the recognizer receives the actual endpoint sample rate before any samples.
+    public int Prepare()
+    {
+        if (_capture != null) throw new InvalidOperationException("Capture is already prepared.");
+        var capture = new WasapiLoopbackCapture();
+        try
+        {
+            _converter = new LoopbackSampleConverter(capture.WaveFormat);
+            capture.DataAvailable += OnData;
+            capture.RecordingStopped += OnStopped;
+            _capture = capture;
+            return capture.WaveFormat.SampleRate;
+        }
+        catch { capture.Dispose(); throw; }
+    }
 
     public void Start()
     {
-        _capture = new WasapiLoopbackCapture();
-        _capture.DataAvailable += OnData;
-        _capture.StartRecording();
+        var capture = _capture ?? throw new InvalidOperationException("Prepare capture before starting.");
+        try { capture.StartRecording(); }
+        catch { Stop(); throw; }
     }
 
     public void Stop()
     {
-        _capture?.StopRecording();
-        _capture?.Dispose();
-        _capture = null;
+        var capture = Interlocked.Exchange(ref _capture, null);
+        if (capture == null) return;
+        capture.DataAvailable -= OnData;
+        capture.RecordingStopped -= OnStopped;
+        try { capture.StopRecording(); } finally { capture.Dispose(); }
     }
 
     private void OnData(object? sender, WaveInEventArgs e)
     {
-        if (e.BytesRecorded == 0) return;
+        var converter = _converter;
+        var onBuffer = OnBuffer;
+        var onError = OnError;
+        if (!ReferenceEquals(sender, _capture) || converter == null || e.BytesRecorded == 0) return;
+        try { onBuffer?.Invoke(converter.Convert(e.Buffer, e.BytesRecorded)); }
+        catch (Exception ex) { onError?.Invoke(ex); }
+    }
 
-        var format = _capture!.WaveFormat;
-        var samples = new float[e.BytesRecorded / (format.BitsPerSample / 8)];
-
-        // Convert bytes to float samples (IEEE float or PCM 16-bit)
-        if (format.Encoding == WaveFormatEncoding.IeeeFloat)
-        {
-            Buffer.BlockCopy(e.Buffer, 0, samples, 0, e.BytesRecorded);
-        }
-        else
-        {
-            // 16-bit PCM fallback
-            for (int i = 0; i < samples.Length; i++)
-                samples[i] = BitConverter.ToInt16(e.Buffer, i * 2) / 32768f;
-        }
-
-        // Downmix to mono if stereo
-        if (format.Channels == 2)
-        {
-            var mono = new float[samples.Length / 2];
-            for (int i = 0; i < mono.Length; i++)
-                mono[i] = (samples[i * 2] + samples[i * 2 + 1]) * 0.5f;
-            OnBuffer?.Invoke(mono);
-        }
-        else
-        {
-            OnBuffer?.Invoke(samples);
-        }
+    private void OnStopped(object? sender, StoppedEventArgs e)
+    {
+        var onError = OnError;
+        if (ReferenceEquals(sender, _capture))
+            onError?.Invoke(e.Exception ?? new IOException("System audio capture stopped unexpectedly."));
     }
 
     public void Dispose() => Stop();

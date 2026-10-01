@@ -14,7 +14,16 @@
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
   </PropertyGroup>
 
+  <!-- Keep WinForms references for screen capture without importing its UI types into WPF. -->
   <ItemGroup>
+    <Using Remove="System.Drawing" />
+    <Using Remove="System.Windows.Forms" />
+    <Using Include="System.IO" />
+    <Using Include="System.Net.Http" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Speech" Version="8.0.0" />
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="Markdig" Version="0.37.0" />
   </ItemGroup>

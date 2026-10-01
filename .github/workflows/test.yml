@@ -1,0 +1,19 @@
+name: Audio routing tests
+
+on:
+  pull_request:
+  push:
+    branches: [main, fix/loopback-transcription]
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Test audio routing and lifecycle
+        run: dotnet test ShadowPilot.Tests/ShadowPilot.Tests.csproj -c Release
+      - name: Build WPF app
+        run: dotnet build ShadowPilot/ShadowPilot.csproj -c Release

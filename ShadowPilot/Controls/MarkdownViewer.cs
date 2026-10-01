@@ -5,6 +5,8 @@ using System.Windows.Media;
 using Markdig;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
+using Block = System.Windows.Documents.Block;
+using Inline = System.Windows.Documents.Inline;
 
 namespace ShadowPilot.Controls;
 

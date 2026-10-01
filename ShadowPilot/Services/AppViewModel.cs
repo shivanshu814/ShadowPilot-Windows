@@ -5,7 +5,7 @@ using ShadowPilot.Models;
 
 namespace ShadowPilot.Services;
 
-public sealed class AppViewModel : INotifyPropertyChanged
+public sealed class AppViewModel : INotifyPropertyChanged, IDisposable
 {
     private static readonly string[] FillerPhrases =
     [
@@ -73,11 +73,31 @@ public sealed class AppViewModel : INotifyPropertyChanged
 
     private CancellationTokenSource? _whisperCts;
 
-    public AppViewModel() => LoadSettings();
+    private readonly System.Windows.Threading.DispatcherTimer _silenceTimer = new()
+    {
+        Interval = TimeSpan.FromMilliseconds(100)
+    };
+    private readonly object _audioCallbackGate = new();
+    private int _listeningSession;
+    private Task<bool>? _stopListeningTask;
+    private Exception? _listeningError;
+    private bool _disposed;
+
+    public AppViewModel()
+    {
+        LoadSettings();
+        _silenceTimer.Tick += (_, _) =>
+        {
+            if (IsListening && AutoListen) _silenceDetector.CheckSilence();
+        };
+    }
 
     // ── Listening ─────────────────────────────────────────────────────────────
     public void StartListening()
     {
+        if (_disposed || IsListening || _stopListeningTask != null) return;
+        var session = Interlocked.Increment(ref _listeningSession);
+        _listeningError = null;
         IsListening = true;
         Transcript  = "";
         Answer      = "";
@@ -86,46 +106,102 @@ public sealed class AppViewModel : INotifyPropertyChanged
         StatusText  = "Listening...";
         _silenceDetector.Reset();
 
-        _speechRec.Start(partial =>
+        void ReportError(Exception error)
         {
-            App.Current.Dispatcher.Invoke(() =>
+            lock (_audioCallbackGate)
             {
-                Transcript = partial;
-                StatusText = string.IsNullOrEmpty(partial) ? "Listening..." : partial;
-            });
-        });
-
-        if (AutoListen)
-        {
-            _silenceDetector.OnSilence = () =>
+                if (session != _listeningSession) return;
+                _listeningError ??= error;
+            }
+            App.Current.Dispatcher.BeginInvoke(new Action(async () =>
             {
-                App.Current.Dispatcher.Invoke(() =>
-                {
-                    if (!IsListening) return;
-                    StopListening();
-                    _ = GetAnswerAsync();
-                });
-            };
+                if (session != _listeningSession || !IsListening) return;
+                await StopListeningAsync();
+            }));
         }
 
-        _audioCapture.OnBuffer = samples =>
+        try
         {
-            _speechRec.AppendSamples(samples);
-            if (AutoListen) _silenceDetector.Process(samples);
-        };
-        _audioCapture.Start();
+            var sampleRate = _audioCapture.Prepare();
+            var appendSamples = _speechRec.Start(sampleRate, partial =>
+            {
+                // Never block an audio/recognizer callback waiting for the UI to stop it.
+                App.Current.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (session != _listeningSession || !IsListening) return;
+                    Transcript = partial;
+                    StatusText = string.IsNullOrEmpty(partial) ? "Listening..." : partial;
+                }));
+            }, ReportError);
+
+            _silenceDetector.OnSilence = async () =>
+            {
+                if (session != _listeningSession || !IsListening || !AutoListen) return;
+                if (await StopListeningAsync() && AutoListen && !_disposed) await GetAnswerAsync();
+            };
+            _audioCapture.OnError = ReportError;
+            _audioCapture.OnBuffer = samples =>
+            {
+                lock (_audioCallbackGate)
+                {
+                    if (session != _listeningSession) return;
+                    appendSamples(samples);
+                    _silenceDetector.Process(samples);
+                }
+            };
+            _audioCapture.Start();
+            _silenceTimer.Start();
+        }
+        catch (Exception ex) { ReportError(ex); }
     }
 
-    public void StopListening()
+    public Task<bool> StopListeningAsync()
     {
+        if (_stopListeningTask != null) return _stopListeningTask;
+        if (!IsListening) return Task.FromResult(false);
         IsListening = false;
+        lock (_audioCallbackGate) Interlocked.Increment(ref _listeningSession);
+        _silenceTimer.Stop();
         _silenceDetector.OnSilence = null;
+        _audioCapture.OnBuffer = null;
+        _audioCapture.OnError = null;
+        return _stopListeningTask = StopListeningCoreAsync();
+    }
 
-        var final = _speechRec.Stop();
-        if (!string.IsNullOrEmpty(final)) Transcript = final;
+    private async Task<bool> StopListeningCoreAsync()
+    {
+        await Task.Yield();
+        Exception? error = _listeningError;
+        try
+        {
+            try { _audioCapture.Stop(); }
+            catch (Exception ex) { error = ex; }
+            try
+            {
+                var final = await _speechRec.StopAsync();
+                if (!_disposed && !string.IsNullOrEmpty(final)) Transcript = final;
+            }
+            catch (Exception ex) { error ??= ex; }
+            if (!_disposed)
+                StatusText = error != null ? $"Listening failed: {error.Message}"
+                    : string.IsNullOrEmpty(Transcript) ? "Ready" : Transcript;
+            return error == null;
+        }
+        finally { _stopListeningTask = null; }
+    }
 
-        _audioCapture.Stop();
-        StatusText = string.IsNullOrEmpty(Transcript) ? "Ready" : Transcript;
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        IsListening = false;
+        lock (_audioCallbackGate) Interlocked.Increment(ref _listeningSession);
+        _silenceTimer.Stop();
+        _silenceDetector.OnSilence = null;
+        _audioCapture.OnBuffer = null;
+        _audioCapture.OnError = null;
+        _whisperCts?.Cancel();
+        try { _audioCapture.Dispose(); } finally { _speechRec.Dispose(); }
     }
 
     // ── Get Answer ────────────────────────────────────────────────────────────
@@ -235,9 +311,9 @@ public sealed class AppViewModel : INotifyPropertyChanged
     }
 
     // ── Clear ─────────────────────────────────────────────────────────────────
-    public void Clear()
+    public async Task ClearAsync()
     {
-        if (IsListening) StopListening();
+        if (IsListening || _stopListeningTask != null) await StopListeningAsync();
         _whisperCts?.Cancel();
         Transcript = "";
         Answer     = "";
